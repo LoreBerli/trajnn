@@ -6,6 +6,7 @@ import numpy as np
 import json
 import glob
 import itertools
+import synth_dataset
 import cv2
 import dataset
 import utils
@@ -71,11 +72,48 @@ class Loader():
                                          train=False, dim_clip=dim_clip,rot=False,shf=True)))
         #self.iter_rand_test = itertools.cycle(self.data_rand_test)
 
+class Loader_synth():
+    def get_top_paths(self, pt):
+        tops = []
+        for top_d in os.listdir(pt):
+            for video in os.listdir(pt + "/" + top_d):
+                tops.append(pt + "/" + top_d + "/" + video)
+        return tops
+
+    def __init__(self, config):
+        self.cfg = config
+
+        tracks = json.load(open("multiple-futures/world_traj_kitti.json"))
+        print("TRACKS_init")
+        dim_clip = self.cfg['dim_clip']
+
+        past_len = self.cfg['prev_leng']
+        future_len = self.cfg['fut_leng']
+        self.q = mp.Queue(self.cfg['batch'] * self.cfg['splits'] * 4)
+        self.q_test = mp.Queue(self.cfg['batch'] * 10)
+
+        self.data_train = synth_dataset.TrackDataset(past_len,future_len)
+        print("LOADER0_init")
+        self.data_test = synth_dataset.TrackDataset(past_len,future_len)
+        print("LOADER1_init")
+        self.data_rand_test = synth_dataset.TrackDataset(past_len,future_len)
+
+        self.iter_train = itertools.cycle(self.data_train)
+        self.trains = []
+        for k in range(0, 2):
+            self.trains.append(
+                itertools.cycle(synth_dataset.TrackDataset(past_len,future_len)))
+
+        self.iter_test = itertools.cycle(self.data_test)
+        self.iters = []
+        for i in range(0, 2):
+            self.iters.append(
+                itertools.cycle(synth_dataset.TrackDataset(past_len,future_len)))
+        # self.iter_rand_test = itertools.cycle(self.data_rand_test)
 
 
 
     def serve(self):
-
         X = np.zeros([self.cfg['batch'], self.cfg['prev_leng'], self.cfg['dims']])
         gt = np.zeros([self.cfg['batch'], self.cfg['fut_leng'], self.cfg['dims']])
         info = []

@@ -49,8 +49,8 @@ def genTrack(tStep, X, theta, vel, squaredSigmaInno):
         Xtraj[t, :] = X.T
     return Xtraj
 
-class FakeTrajMapDataset():
-    def __init__(self, past_len, fut_len, n_roads=5, scale=220, pad=320, radius=5, transform=None):
+class TrackDataset():
+    def __init__(self, past_len, fut_len, n_roads=5, scale=160, pad=460, radius=5, transform=None):
         self.past_len = past_len
         self.fut_len = fut_len
         self.traj_len = past_len + fut_len
@@ -64,7 +64,7 @@ class FakeTrajMapDataset():
         return 1000
 
     def __getitem__(self, idx):
-        m = np.zeros((self.scale + self.pad, self.scale + self.pad,4))
+        m = np.zeros((self.scale + self.pad, self.scale + self.pad))
         for _ in range(self.n_roads):
             g = genTrack(self.traj_len + 10, np.array([-1, 0], np.float64), 0.1, 0.03, 0.03)
             scaled_track = g * self.scale / 2 + self.scale / 2 + self.pad / 2
@@ -73,11 +73,20 @@ class FakeTrajMapDataset():
             scaled_track_int = scaled_track.copy().astype(np.int)
 
         for i in range(len(scaled_track_int)):
-                m[1,scaled_track_int[i, 1] - self.radius:scaled_track_int[i, 1] + self.radius,
-                    scaled_track_int[i, 0] - self.radius:scaled_track_int[i, 0] + self.radius] = 255
-        m[2]=ndimage.binary_erosion(marc,structure=np.ones([4,4])).astype(mp.dtype)
+                m[scaled_track_int[i, 1] - self.radius:scaled_track_int[i, 1] + self.radius,
+                    scaled_track_int[i, 0] - self.radius:scaled_track_int[i, 0] + self.radius] = 1.0
 
-        #m = np.expand_dims(m, 0)
+        m=m+ndimage.binary_erosion(m*2.0,structure=np.ones([4,4])).astype(np.int32)
+        last_pt = past[-1]
+        last_pt = last_pt.astype(np.int)
+        size = 160
+        past = np.squeeze(past - last_pt).astype(np.float32)/2.0
+        future = np.squeeze(future - last_pt).astype(np.float32)/2.0
+        m=m[last_pt[1] - size:last_pt[1] + size, last_pt[0] - size:last_pt[0] + size]
+
+        m = np.expand_dims(m, 0)
+        #m=m.transpose([1,0,2])
+
         sample = {'past': past,
                   'future': future,
                   'map': m}
@@ -85,4 +94,4 @@ class FakeTrajMapDataset():
             sample = self.transform(sample)
 #return self.index[idx], self.istances[idx], self.labels[idx], self.presents[idx], self.video_track[idx], self.vehicles[idx], self.number_vec[idx], self.scene[idx], self.scene_one_hot[idx]
 
-        return 0,past,future,[0,0],0,0,1,sample,sample
+        return 0,past,future,[0,0],0,0,1,m,m

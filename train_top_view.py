@@ -283,6 +283,7 @@ def train_multiple():
 
 
     loader=utils.Loader(cfg)
+    loader=utils.Loader_synth(cfg)
 
     init=tf.initializers.global_variables()
     saver=tf.train.Saver()
