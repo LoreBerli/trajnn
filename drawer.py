@@ -122,7 +122,7 @@ def points_alone(past,pts,gt,k,path):
     plt.savefig(path+"/tst"+str(k)+".png")
     return
 
-def draw_scenes(im, k, path, futures,past,gt,dim,weird,text=None,special=None):
+def draw_scenes(sp_cord,sp_crop,im, k, path, futures,past,gt,dim,weird,text=None,special=None):
     im=np.tile(im,[1,1,3])
     im=im*32
 
@@ -131,7 +131,25 @@ def draw_scenes(im, k, path, futures,past,gt,dim,weird,text=None,special=None):
     gf=Image.fromarray(im)
 
     gf=gf.resize((dim*4,dim*4))
+
+    sp_cord=(np.array(sp_cord* 4, dtype=np.int32) ) + dim*2
+
+    h,w=sp_crop.shape[0:2]
+
+    xx=np.tile(sp_crop[:,:,2:3],[1,1,3])
+
+    xx=xx*50
+
+    xx=xx.astype('uint8')
+
+
+    im_cro=Image.fromarray(xx)
+    im_cro=im_cro.resize((h *2, w*2 ))
+
+    # gf.paste(im_cro,(sp_cord[0]-im_cro.size[0]/2,sp_cord[1]-im_cro.size[1]/2))
     drawer = ImageDraw.Draw(gf)
+    # drawer.rectangle([(sp_cord[0] - 2, sp_cord[1] - 2), (sp_cord[0] + 2, sp_cord[1] + 2)], fill=(255, 255, 0))
+    # drawer.rectangle([(sp_cord[0] - 2-im_cro.size[0]/2, sp_cord[1] - 2-im_cro.size[0]/2), (sp_cord[0] + 2-im_cro.size[0]/2, sp_cord[1] + 2-im_cro.size[0]/2)], fill=(255, 255, 0))
 
     sz = 1
 
@@ -147,11 +165,11 @@ def draw_scenes(im, k, path, futures,past,gt,dim,weird,text=None,special=None):
         r = min(255, 160 + i * 10)
         drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(0, 0, r))
 
-    poins = (np.array(weird * 4, dtype=np.int32)) + dim * 2
-    lt = [tuple(p) for p in poins.tolist()]
-    for i, l in enumerate(lt):
-        r = min(255, 160 + i * 10)
-        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(0, r, r))
+    # poins = (np.array(weird * 4, dtype=np.int32)) + dim * 2
+    # lt = [tuple(p) for p in poins.tolist()]
+    # for i, l in enumerate(lt):
+    #     r = min(255, 160 + i * 10)
+    #     drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(0, r, r))
 
     tr=0
     step=int(223/len(futures))

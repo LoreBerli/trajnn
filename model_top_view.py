@@ -17,6 +17,8 @@ class rec_model():
                                      shape=[config['batch'], config['pred_ext'] + config['fut_leng'], self.dims])
         self.crops=tf.placeholder(tf.float32,
                                      shape=[config['batch'],config['pred_ext'] + config['fut_leng'], 16,16,4])
+        self.coo=tf.placeholder(tf.float32,
+                                     shape=[config['batch'],config['pred_ext'] + config['fut_leng'], 2],name="CODIO")
         self.clas = tf.placeholder(tf.float32, shape=[config['batch']])
         #self.dirs_loss = tf.placeholder(tf.float32, shape=[config['batch']])
         self.leng_loss = tf.placeholder(tf.float32, shape=[config['batch']])
@@ -184,7 +186,7 @@ class rec_model():
             with tf.variable_scope("MULTIPLE",reuse=tf.AUTO_REUSE):
                 embs = []
                 outs = []
-                for k in range(0, 5):
+                for k in range(0,5):
                     if (self.config['vae']):
                         self.z_mean_c = tf.layers.dense(embed_f, self.latent_size, name="MEAN")
                         self.z_std_c = tf.layers.dense(embed_f, self.latent_size, name="STD")
@@ -200,29 +202,40 @@ class rec_model():
 
 
                 ############################
-                    Xin = tf.layers.dense(embed, 32,name="XIN")
+                    Xin = tf.layers.dense(embed, self.state_size,name="XIN")
                     BXIN= tf.layers.dense(embed, self.state_size,name="BXIN")
-                    e_ts = tf.layers.dense(embed, (self.config['fut_leng'] + self.config['pred_ext']) * (32),name="e_TS")
+                    e_ts = tf.layers.dense(embed, (self.config['fut_leng'] + self.config['pred_ext']) * (self.state_size),name="e_TS")
                     e_ts = tf.reshape(e_ts, [self.config['batch'], self.config['fut_leng'] + self.config['pred_ext'],
-                                             32],name="e_TS_reshaped")
-                    self.enc_i,sts = self.self_feeding_rnn(tfn.GRUCell(32,name="first2"),
-                                                                        self.config['prev_leng'], e_ts, Xin)
+                                             self.state_size],name="e_TS_reshaped")
+
                     with tf.variable_scope("DEC",reuse=tf.AUTO_REUSE):
 
                             if (self.config['autoregressive']):
-                                # d_ou, d_state = self.self_feeding_rnn(tfn.GRUCell(32,name="first"),
-                                #                                         self.config['fut_leng'] + self.config['pred_ext']
-                                #                                         , e_ts, Xin)
-                                d_ou, d_state = tf.nn.dynamic_rnn(tfn.GRUCell(self.state_size), e_ts,
-                                                                    initial_state=Xin, dtype=tf.float32, scope="DEC")
-                                d_ou = tf.layers.dense(d_ou, 2)
+                                cl1=tfn.GRUCell(self.state_size, name="first")
+                                d_ou, d_state = self.self_feeding_rnn(cl1,
+                                                                        self.config['fut_leng'] + self.config['pred_ext']
+                                                                        , e_ts, cl1.zero_state(self.config['batch'],tf.float32))
+                                # d_ou, d_state = tf.nn.dynamic_rnn(tfn.GRUCell(self.state_size), e_ts,
+                                #                                     initial_state=Xin, dtype=tf.float32, scope="DEC")
+                                # d_ou = tf.layers.dense(d_ou, 2)
                                 d_spec = d_ou
                                 self.d_spec=tf.cumsum(d_spec, -2,name="cumsum")
                                 inps=self.d_spec
+                                bias = self.inputs[:, -1, :]
+                                bias = tf.expand_dims(bias, 1)
+                                my_b = inps[:, 0, :]
+                                my_b = tf.expand_dims(my_b, 1)
+                                diff = my_b - bias
+                                inps = inps - diff
+                                cl = tfn.GRUCell(self.state_size, name="second")
+                                for iter in range(0,4):
 
-                                for iter in range(0,1):
-                                    d_outs, BXIN= self.small_map_self_feeding_rnn(tfn.GRUCell(self.state_size,name="second"),self.config['fut_leng'] + self.config['pred_ext'],inps, BXIN, map_in)
+                                    d_outs,BXIN= self.small_map_self_feeding_rnn(cl,self.config['fut_leng'] + self.config['pred_ext'],inps, cl.zero_state(self.config['batch'],tf.float32), map_in)
                                     inps=d_outs
+                                    my_b = inps[:, 0, :]
+                                    my_b = tf.expand_dims(my_b, 1)
+                                    diff = my_b - bias
+                                    inps = inps - diff
                             else:
                                 d_outs, d_state = tf.nn.dynamic_rnn(tfn.GRUCell(self.state_size), e_ts, initial_state=Xin,dtype=tf.float32, scope="DEC")
                                 d_outs = tf.layers.dense(d_outs, 2)
@@ -357,9 +370,9 @@ class rec_model():
             def do_time_step(i, state, xo, ta, inp_ta):
                 st = inp_ta.read(i)
                 s1 = st
-                #xd = tf.concat([s1, xo], -1,name="xd_concat")
-                #xd = tf.layers.dense(xd, self.state_size,name="self_xd")
-                wut = cell(s1, state)
+                xd = tf.concat([s1, xo], -1,name="xd_concat")
+                xd = tf.layers.dense(xd, self.state_size,name="self_xd")
+                wut = cell(xd, state)
                 Yt, Ht = wut
                 next = Ht
                 Yro = tf.layers.dense(Yt, 2,name="out_rnn")
@@ -435,9 +448,13 @@ class rec_model():
             return Yo, Hout
 
     def small_map_self_feeding_rnn(self, cell, seqlen, Hin, Xin, MapIn, processing=tf.identity):
+
         with tf.variable_scope("map_rnn", reuse=tf.AUTO_REUSE):
+
+
             buffer = tf.TensorArray(dtype=tf.float32, size=seqlen,name="bufff")
             crops=tf.TensorArray(dtype=tf.float32, size=seqlen,name="crops")
+            co_ss=tf.TensorArray(dtype=tf.float32, size=seqlen,name="co_ss")
 
             inputs = tf.transpose(Hin, [1, 0, 2])
 
@@ -447,26 +464,35 @@ class rec_model():
             in_first = inputs[0]
             zer = inputs[0]
 
-            initial_state = (0, Xin, Xin, buffer, inputs_ta,zer,crops)
+            initial_state = (0, Xin, Xin, buffer, inputs_ta,zer,crops,co_ss)
             condition = lambda i, *_: i < seqlen
             #print("MAPIN",MapIn.shape)
 
-            def do_time_step(i, state, xo, ta, inp_ta,cords,crps):
+            def do_time_step(i, state, xo, ta, inp_ta,cords,crps,co_s):
                 st = inp_ta.read(i)
-                cord = st*2.0#tf.layers.dense(cords,2,activation=tf.nn.tanh)
+                cord = st*4.0#tf.layers.dense(cords,2,activation=tf.nn.tanh)
                 print("CORD",cord)
 
-                cord=tf.reverse(cord,[-1])
-                crop = tf.image.extract_glimpse(MapIn, tf.constant([10,10]), cord,centered=True,normalized=False)
-                crop = tf.layers.conv2d(crop,4, [3,3],strides=[2,2], padding='same',name="conv")
-                cropt = tf.layers.dense(tf.layers.flatten(crop), 32,name="denscrop")
+                cordr=tf.reverse(cord,[-1])
+                crop = tf.image.extract_glimpse(MapIn, tf.constant([32,32]), cordr,centered=True,normalized=False)
+                print(crop)
+                crop_ = tf.layers.conv2d(crop,1, [4,4],strides=[2,2], padding='valid',name="conv",activation=tf.nn.leaky_relu)
 
-                xd = tf.concat([xo,st,cropt], -1)
-                #xd = tf.layers.dense(xd, self.state_size,name="tostatesize")
+                print("CROOP", crop)
+                crop_ = tf.layers.average_pooling2d(crop_,[5,5],[2,2])
+                mini_crop=tf.image.extract_glimpse(MapIn, tf.constant([5,5]), cordr,centered=True,normalized=False)
+                mini_crop=tf.layers.dense(tf.layers.flatten(mini_crop),16,activation=tf.nn.leaky_relu,name="mionidense")
+
+                print("CROOP",crop)
+                cropt = tf.layers.dense(tf.layers.flatten(crop_),16,activation=tf.nn.leaky_relu,name="bigdense")
+
+                xd = tf.concat([xo,st,cords,cropt,mini_crop], -1)
+                xd = tf.layers.dense(xd, self.state_size,name="tostatesize")
                 #print("xo", xd)
                 #print("state", state)
-
-                wut = cell(xd, state)
+                print("XD",xd)
+                wut = cell.__call__(xd, state)
+                print("CELL",cell)
                 #print(wut)
                 Yt, Ht = wut
                 next = Ht
@@ -475,12 +501,14 @@ class rec_model():
 
                 #print("yro", Yro)
 
-                return (1 + i, next, Yt, ta.write(i, Yro), inp_ta,Yro,crps.write(i,crop))
+                return (1 + i, next, Yt, ta.write(i, Yro), inp_ta,Yro,crps.write(i,crop),co_s.write(i,st))
 
-            _, Hout, yout, final_stack, _,_ ,crp= tf.while_loop(condition, do_time_step, initial_state)
+            _, Hout, yout, final_stack, _,_ ,crp,co_ = tf.while_loop(condition, do_time_step, initial_state)
 
             self.crops=crp.stack()
+            self.coo=co_.stack()
             self.crops=tf.transpose(self.crops,[1,0,2,3,4])
+            self.coo = tf.transpose(self.coo, [1, 0, 2])
             ta_stack = final_stack.stack()
 
             # Yo=ta_stack
@@ -724,16 +752,19 @@ class rec_model():
     def multiple_loss(self):
         scores=[]
         stck=tf.stack(self.out)
-
+        mask = np.ones(shape=[self.config['batch'], self.config['pred_ext'] + self.config['fut_leng']])
+        scales = np.arange(3.0, 1.0, -(2.0 / float(self.config['pred_ext'] + self.config['fut_leng'])))
+        mask = mask * scales
         to_list=tf.unstack(stck)
         bg = tf.cumsum(self.target, -2)
         for i,o in enumerate(to_list):
             sqrd_diff = tf.reduce_sum(tf.squared_difference(o, bg), -1)
+            sqrd_diff = sqrd_diff * mask
+
+
             scores.append(sqrd_diff)
         scores=tf.stack(scores)
-        #print("SCORES",scores)
         meaned=tf.reduce_mean(scores,-1)
-        #print("MEANED",meaned)
         mini= tf.reduce_min(meaned,0)
 
         return tf.reduce_mean(mini)

@@ -9,6 +9,7 @@ import model_double
 import yaml
 import utils_top_view as utils
 import random
+import gc
 import json
 import os
 import drawer
@@ -283,7 +284,7 @@ def train_multiple():
 
 
     loader=utils.Loader(cfg)
-    loader=utils.Loader_synth(cfg)
+    #loader=utils.Loader_synth(cfg)
 
     init=tf.initializers.global_variables()
     saver=tf.train.Saver()
@@ -316,19 +317,21 @@ def train_multiple():
         #test_writer = tf.summary.FileWriter(newp + "/data", sess.graph)
         print(newp)
         for e in range(cfg['epochs']):
+            last=len(gc.get_objects())
             for i in range(0,1000):
 
-                x, gt,info,img = loader.serve()
+                x, gt,_,img = loader.serve()
                 noiz=np.random.randn(cfg['batch'],8)
                 img = np.eye(4)[np.array(img, dtype=np.int32)]
                 img=np.squeeze(img)
-                if(i==0):
-                    print("--------------",x[0])
-                summary, ls, o,_ = sess.run([merge, mod.loss, mod.out,mini],
+
+                ls,_ = sess.run([ mod.loss,mini],
                                           feed_dict={inpts: utils.to_offsets(x), mod.noiz:noiz,outs: utils.to_offsets(gt), mod.target: utils.to_offsets(gt), mod.inputs: utils.to_offsets(x), mod.drop: 0.9, mod.image: img,mod.factor:[1.0]})
+
+
                 if(i%400==0):
                     print("TRAIN ",ls)
-                if (i % 200 == 0):
+                if (i % 400 == 1):
                     summ = 0
                     all_errors_at_t = []
                     all_ade_at_t = []
@@ -336,12 +339,12 @@ def train_multiple():
                         x, gt, info, imga = loader.serve_random_test()
 
                         noiz = np.random.randn(cfg['batch'], 8)
-                        img = np.eye(4)[np.array(imga, dtype=np.int32)]
-                        img = np.squeeze(img)
+                        imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
+                        imgd = np.squeeze(imgd)
 
-                        imc, summary, ls, o, dspec = sess.run([mod.crops,merge, mod.loss, mod.out,mod.d_spec],
+                        old_c,imc, summary, ls, o, dspec = sess.run([mod.coo,mod.crops,merge, mod.loss, mod.out,mod.d_spec],
                                                       feed_dict={inpts: utils.to_offsets(x), outs: utils.to_offsets(gt), mod.target: utils.to_offsets(gt), mod.inputs: utils.to_offsets(x),
-                                                                 mod.drop: 1.0,mod.noiz:noiz, mod.image: img,mod.factor:[1.0]})
+                                                                 mod.drop: 1.0,mod.noiz:noiz, mod.image: imgd,mod.factor:[1.0]})
 
 
 
@@ -352,11 +355,12 @@ def train_multiple():
 
                         for k in range(cfg['batch']):
                             preds = futures
+
                             all_errors = np.sqrt(np.sum(((preds[k] - gt[k] ) ** 2), -1))
                             best_future_id = np.argmin(np.mean(all_errors, -1))
                             best_future_errors_at_t = all_errors[best_future_id]
                             best_future_ade_at_t = np.divide(np.cumsum(best_future_errors_at_t), np.arange(1, cfg['fut_leng']+1))
-                            drawer.draw_scenes(imga[k], str(e) + "-" + str(tst) + "-" + str(k), newp, futures=futures[k,:],past=x[k],
+                            drawer.draw_scenes(old_c[k][-1],imc[k][-1,:],imga[k], str(e) + "-" + str(tst) + "-" + str(k), newp, futures=futures[k,:],past=x[k],
                                               gt=gt[k],dim=cfg['dim_clip'],weird=dspec[k],text=str(best_future_errors_at_t),special=best_future_id)
 
                             drawer.draw_crops(imc[k], str(k),newp,dspec[k])

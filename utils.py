@@ -16,7 +16,7 @@ import utils
 #            - present
 #            - class
 #            - box
-test_set = ["../kitti_rev2/training/" + d for d in os.listdir("../kitti_rev2/training/")]
+#test_set = ["../kitti_rev2/training/" + d for d in os.listdir("../kitti_rev2/training/")]
 
 
 

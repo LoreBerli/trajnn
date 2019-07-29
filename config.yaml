@@ -5,14 +5,14 @@ segm_path: "../image_02"
 img_path: "../image_02"
 feat_path: "feats128"
 splits: 1
-batch: 8
-units : 32
-lat_size: 32
+batch: 16
+units : 64
+lat_size: 64
 disc_runs_per_gen_runs: 3
 epochs: 400
 lr: 0.0001
 dim_clip: 160
-clipping: True
+clipping: False
 im_d_lr: 0.0001
 d_lr: 0.0001
 wei: 0.1
@@ -41,7 +41,7 @@ rec_losses: ['l2']
 ################
 vae: True
 ################
-GPU: 5
+GPU: 0
 ################
 prev_leng: 20
 fut_leng: 40
@@ -54,11 +54,11 @@ out_size_x: 1242.0
 out_size_y: 375.0
 center: True
 ################
-test: "False"
-load: "False"
+test: "True"
+load: "True"
 #file:///home/cioni/data/trajRNN/80035_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_32_32_delightful_fish
 #/home/cioni/data/trajRNN/2847_train_RNN-CTX10_20_breakable_gazelle
-load_path: "/home/cioni/data/trajRNN/58941_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_32_32_bloody_worm/model/model.ckpt"
+load_path: "/home/cioni/PycharmProjects/trajnn/29140_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_64_64_doubtful_dog/model/model.ckpt"
 ...
 
 

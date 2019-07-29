@@ -88,9 +88,14 @@ class TrackDataset:
 
             video_id = video[-9:-5]
             path_scene = 'multiple-futures/maps/2011_09_26__2011_09_26_drive_' + video_id + '_sync_map.png'
-            scene_track = cv2.imread(path_scene, 0) - 1
+            scene_track = cv2.imread(path_scene, 0)-1
+
             scene_track[np.where(scene_track == 3)] = 0
-            scene_track[np.where(scene_track == 4)] -= 1
+            scene_track[np.where(scene_track == 2)] = 3
+            scene_track[np.where(scene_track == 1)] = 2
+            scene_track[np.where(scene_track == 4)] = 1
+
+
             random.shuffle(vehicles)
             for vec in vehicles:
                 class_vec = tracks[video][vec]['cls']
