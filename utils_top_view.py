@@ -60,16 +60,20 @@ class Loader():
         #                                  train=False, dim_clip=dim_clip,rot=False,shf=True)
 
         #self.iter_train = itertools.cycle(self.data_train)
-        self.trains=[]
-        for k in range(0,2):
-            self.trains.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
-                                          train=True, dim_clip=dim_clip,rot=True,shf=True)))
+        if(config['test']):
+            self.data_test = dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len, train=False, dim_clip=dim_clip,rot=False,shf=False)
+
+        else:
+            self.trains=[]
+            for k in range(0,2):
+                self.trains.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
+                                              train=True, dim_clip=dim_clip,rot=True,shf=True)))
 
 
-        self.iters=[]
-        for i in range(0,2):
-            self.iters.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
-                                         train=False, dim_clip=dim_clip,rot=False,shf=True)))
+            self.iters=[]
+            for i in range(0,2):
+                self.iters.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
+                                             train=False, dim_clip=dim_clip,rot=False,shf=True)))
 
         #self.iter_rand_test = itertools.cycle(self.data_rand_test)
     def serve(self):

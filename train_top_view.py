@@ -284,7 +284,7 @@ def train_multiple():
 
 
     loader=utils.Loader(cfg)
-    #loader=utils.Loader_synth(cfg)
+    loader_s=utils.Loader_synth(cfg)
 
     init=tf.initializers.global_variables()
     saver=tf.train.Saver()
@@ -318,20 +318,25 @@ def train_multiple():
         print(newp)
         for e in range(cfg['epochs']):
             last=len(gc.get_objects())
+            t_l=0
             for i in range(0,1000):
 
-                x, gt,_,img = loader.serve()
+
+                if(i%10==0):
+                    x, gt, _, img = loader_s.serve()
+                else:
+                    x, gt, _, img = loader.serve()
                 noiz=np.random.randn(cfg['batch'],8)
                 img = np.eye(4)[np.array(img, dtype=np.int32)]
                 img=np.squeeze(img)
 
                 ls,_ = sess.run([ mod.loss,mini],
                                           feed_dict={inpts: utils.to_offsets(x), mod.noiz:noiz,outs: utils.to_offsets(gt), mod.target: utils.to_offsets(gt), mod.inputs: utils.to_offsets(x), mod.drop: 0.9, mod.image: img,mod.factor:[1.0]})
+                t_l+=ls
 
-
-                if(i%400==0):
-                    print("TRAIN ",ls)
-                if (i % 400 == 1):
+                if(i%100==0):
+                    print("TRAIN ",t_l/100.0)
+                if (i % 200 == 1):
                     summ = 0
                     all_errors_at_t = []
                     all_ade_at_t = []
@@ -391,7 +396,7 @@ def get_config():
 
 def main():
     cfg = get_config()
-    if(cfg['test']=="True"):
+    if(cfg['test']==True):
         print("TEST")
         test_multiple()
 

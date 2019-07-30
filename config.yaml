@@ -41,7 +41,7 @@ rec_losses: ['l2']
 ################
 vae: True
 ################
-GPU: 0
+GPU: 4
 ################
 prev_leng: 20
 fut_leng: 40
@@ -54,11 +54,11 @@ out_size_x: 1242.0
 out_size_y: 375.0
 center: True
 ################
-test: "True"
-load: "True"
+test: False
+load: False
 #file:///home/cioni/data/trajRNN/80035_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_32_32_delightful_fish
 #/home/cioni/data/trajRNN/2847_train_RNN-CTX10_20_breakable_gazelle
-load_path: "/home/cioni/PycharmProjects/trajnn/29140_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_64_64_doubtful_dog/model/model.ckpt"
+load_path: "/home/cioni/data/trajRNN/11373_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_128_128_determined_deer/model/model.ckpt"
 ...
 
 
