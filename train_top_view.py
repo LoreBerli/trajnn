@@ -200,11 +200,12 @@ def test_multiple():
     merge = tf.summary.merge_all()
 
     with tf.Session(config=config) as sess:
-        if (cfg['load'] == "True"):
+        if (cfg['load'] == True):
             saver.restore(sess, cfg['load_path'])
             print("LOADED MODEL at " + cfg['load_path'])
         else:
-            sess.run(init)
+            exit()
+            #sess.run(init)
 
         train_writer = tf.summary.FileWriter("logs/" + newp, sess.graph)
 
@@ -307,7 +308,7 @@ def train_multiple():
     merge = tf.summary.merge_all()
 
     with tf.Session(config=config) as sess:
-        if(cfg['load']=="True"):
+        if(cfg['load']==True):
             saver.restore(sess,cfg['load_path'])
             print("LOADED MODEL at " +cfg['load_path'])
         else:
@@ -322,7 +323,7 @@ def train_multiple():
             for i in range(0,1000):
 
 
-                if(i%10==0):
+                if(e<3):
                     x, gt, _, img = loader_s.serve()
                 else:
                     x, gt, _, img = loader.serve()
