@@ -79,9 +79,9 @@ def train():
 
                 summary, ls, o,_ = sess.run([merge, mod.loss, mod.out,mini],
                                           feed_dict={inpts: utils.to_offsets(x), mod.noiz:noiz,outs: utils.to_offsets(gt), mod.target: utils.to_offsets(gt), mod.inputs: utils.to_offsets(x), mod.drop: 0.9, mod.image: img,mod.factor:[1.0]})
-                if(i%400==0):
+                if(i%500==0):
                     print("TRAIN ",ls)
-                if (i % 200 == 0):
+                if (i == 1):
                     summ = 0
                     all_errors_at_t = []
                     all_ade_at_t = []
@@ -125,7 +125,7 @@ def train():
                     mean_ade_at_t = np.mean(all_ade_at_t, 0)
                     #print(str(mean_errors_at_t) + " mean err at t  "+str(mean_ade_at_t)+" mean ade at t")
 
-                    print(str(np.mean(mean_errors_at_t)) + " mean err"+str(np.mean(mean_ade_at_t))+" mean ade")
+                    print(str(mean_errors_at_t[-1]) + " 4s err "+str(mean_ade_at_t[-1])+" 4s ade")
 
                     print(str(np.mean(summ)) + " iteration " + str(i) + "of " + str(1000) + " ,at epoch " + str(
                         e) + " of " + str(cfg['epochs']))
@@ -155,8 +155,9 @@ def ClipIfNotNone(grad):
         return grad
     return tf.clip_by_value(grad, -1, 1)
 
-def test_multiple():
-    cfg = get_config()
+def test_multiple(cfg):
+    #cfg = get_config()
+    tf.reset_default_graph()
     cfg['batch']=1
     inpts = tf.placeholder(tf.float32, [cfg['batch'], cfg['prev_leng'], cfg['dims']])
     outs = tf.placeholder(tf.float32, [cfg['batch'], cfg['fut_leng'], cfg['dims']])
@@ -200,6 +201,7 @@ def test_multiple():
     merge = tf.summary.merge_all()
 
     with tf.Session(config=config) as sess:
+
         if (cfg['load'] == True):
             saver.restore(sess, cfg['load_path'])
             print("LOADED MODEL at " + cfg['load_path'])
@@ -263,11 +265,17 @@ def test_multiple():
         print("_____________")
         print(mean_ade_at_t)
         print(np.mean(mean_ade_at_t, 0))
+        with open(newp+"/data/data","w+") as fl:
+            fl.write(newp+" \n")
+            fl.write("ERRORS \n"+str(mean_errors_at_t))
+            fl.write("\n ADES \n" + str(mean_ade_at_t))
+        fl.close()
 
 
 
-def train_multiple():
-    cfg = get_config()
+def train_multiple(cfg):
+    #cfg = get_config(cf)
+    tf.reset_default_graph()
     inpts = tf.placeholder(tf.float32,[cfg['batch'],cfg['prev_leng'],cfg['dims']])
     outs = tf.placeholder(tf.float32, [cfg['batch'], cfg['fut_leng'], cfg['dims']])
 
@@ -290,10 +298,10 @@ def train_multiple():
     init=tf.initializers.global_variables()
     saver=tf.train.Saver()
 
-    if(cfg['type']!= 3):
-        newp=str(time.time()).split(".")[0][-5:]+"_"+cfg['prefix']+"_"+"-".join(nms[i] for i in range(cfg['type']+1))+str(cfg['prev_leng'])+"_"+str(cfg['fut_leng'])+"_"+str(cfg['units'])+"_"+str(cfg['lat_size'])+"_"+"_".join(name_generator.get_combo())
-    else:
-        newp=str(time.time()).split(".")[0][-5:]+"_"+cfg['prefix']+"_"+nms[cfg['type']]+str(cfg['prev_leng'])+"_"+str(cfg['fut_leng'])+"_"+str(cfg['units'])+"_"+str(cfg['lat_size'])+"_"+"_".join(name_generator.get_combo())
+    # if(cfg['type']!= 3):
+    #     newp=str(time.time()).split(".")[0][-5:]+"_"+cfg['prefix']+"_"+"-".join(nms[i] for i in range(cfg['type']+1))+str(cfg['prev_leng'])+"_"+str(cfg['fut_leng'])+"_"+str(cfg['units'])+"_"+str(cfg['lat_size'])+"_"+"_".join(name_generator.get_combo())
+    # else:
+    newp=str(time.time()).split(".")[0][-5:]+"_"+cfg['prefix']+"_"+nms[cfg['type']]+str(cfg['prev_leng'])+"_"+str(cfg['fut_leng'])+"_"+str(cfg['units'])+"_"+str(cfg['lat_size'])+"_"+"_".join(name_generator.get_combo())
 
     os.mkdir(newp)
     os.mkdir(newp+"/model")
@@ -308,6 +316,7 @@ def train_multiple():
     merge = tf.summary.merge_all()
 
     with tf.Session(config=config) as sess:
+
         if(cfg['load']==True):
             saver.restore(sess,cfg['load_path'])
             print("LOADED MODEL at " +cfg['load_path'])
@@ -337,12 +346,16 @@ def train_multiple():
 
                 if(i%100==0):
                     print("TRAIN ",t_l/100.0)
-                if (i % 200 == 1):
+                    t_l=0.0
+                if (i  == 1):
                     summ = 0
                     all_errors_at_t = []
                     all_ade_at_t = []
-                    for tst in range(0, 20):
-                        x, gt, info, imga = loader.serve_random_test()
+                    for tst in range(0, 5):
+                        if(tst==1):
+                            x, gt, info, imga = loader_s.serve()
+                        else:
+                            x, gt, info, imga = loader.serve_random_test()
 
                         noiz = np.random.randn(cfg['batch'], 8)
                         imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
@@ -376,13 +389,16 @@ def train_multiple():
                     mean_errors_at_t = np.mean(all_errors_at_t, 0)
                     mean_ade_at_t = np.mean(all_ade_at_t, 0)
 
-                    print(str(np.mean(mean_errors_at_t)) + " mean err"+str(np.mean(mean_ade_at_t))+" mean ade")
+                    print(str(mean_errors_at_t[-1]) + " 4s err "+str(mean_ade_at_t[-1])+" 4s ade")
                     print(str(np.mean(summ)) + " iteration " + str(i) + "of " + str(1000) + " ,at epoch " + str(
                         e) + " of " + str(cfg['epochs']))
 
-            if (e % 3 == 0):
+            if (e % 2 == 0):
                 print("SAVING " + newp)
                 saver.save(sess, newp + "/model/model.ckpt")
+
+
+        return newp
 
 
 def scale_up(gts,sx,sy):
@@ -390,28 +406,31 @@ def scale_up(gts,sx,sy):
     poins = poins* (sx / 4.0, sy)
     return np.array(poins, dtype=np.int32)
 
-def get_config():
-    with open("config.yaml") as raw_cfg:
+def get_config(cf):
+    with open(cf) as raw_cfg:
         cfg = yaml.load(raw_cfg)
     return cfg
 
-def main():
-    cfg = get_config()
+def main(cf="config.yaml"):
+    cfg = get_config(cf)
     if(cfg['test']==True):
         print("TEST")
-        test_multiple()
+        test_multiple(cfg)
 
-    elif cfg['type']==2:
-        print("TRAIN")
-        train_GAN()
+    # elif cfg['type']==2:
+    #     print("TRAIN")
+    #     train_GAN()
 
     elif cfg['type']==5:
         print("TRAIN")
-        train_multiple()
+        train_multiple(cfg)
+
+
+
 
 
     else:
         print("TRAIN")
         train()
     #train_GAN()
-main()
+#main()

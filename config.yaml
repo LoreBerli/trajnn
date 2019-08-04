@@ -9,20 +9,22 @@ batch: 16
 units : 64
 lat_size: 64
 disc_runs_per_gen_runs: 3
-epochs: 400
-lr: 0.00005
+epochs: 1
+lr: 0.0001
 dim_clip: 160
 clipping: False
 im_d_lr: 0.0001
 d_lr: 0.0001
 wei: 0.1
 old: False
-prefix: "inverted_All_true_l2_"
+prefix: "45-7"
 inverted: "True"
 stn: False
 fine: True
 img_embed: 32
 norm: True
+big_window: 45
+small_window: 7
 ########################
 type: 5
 ####################
@@ -41,7 +43,7 @@ rec_losses: ['l2']
 ################
 vae: True
 ################
-GPU: 5
+GPU: 0
 ################
 prev_leng: 20
 fut_leng: 40
@@ -54,11 +56,11 @@ out_size_x: 1242.0
 out_size_y: 375.0
 center: True
 ################
-test: True
+test: False
 load: True
 #file:///home/cioni/data/trajRNN/80035_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_32_32_delightful_fish
 #/home/cioni/data/trajRNN/2847_train_RNN-CTX10_20_breakable_gazelle
-load_path: "/home/cioni/data/trajRNN/40651_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_64_64_outstanding_tarsier/model/model.ckpt"
+load_path: "/home/cioni/PycharmProjects/trajnn/41851_45-7_MULTIPLE20_40_64_64_amused_jay/model/model.ckpt"
 ...
 
 

@@ -232,14 +232,14 @@ class rec_model():
                                 diff = my_b - bias
                                 inps = inps - diff
 
-                                for iter in range(0,1):
+                                for iter in range(0,2):
                                     cl = tfn.GRUCell(self.state_size, name="second",reuse=(iter!=0))
                                     d_outs,BXIN= self.small_map_self_feeding_rnn(cl,self.config['fut_leng'] + self.config['pred_ext'],inps, cl.zero_state(self.config['batch'],tf.float32), map_in,name="sm_map",res=(iter!=0))
                                     inps=d_outs
-                                    my_b = inps[:, 0, :]
-                                    my_b = tf.expand_dims(my_b, 1)
-                                    diff = my_b - bias
-                                    inps = inps - diff
+                                    # my_b = inps[:, 0, :]
+                                    # my_b = tf.expand_dims(my_b, 1)
+                                    # diff = my_b - bias
+                                    # inps = inps - diff
                             else:
                                 d_outs, d_state = tf.nn.dynamic_rnn(tfn.GRUCell(self.state_size), e_ts, initial_state=Xin,dtype=tf.float32, scope="DEC")
                                 d_outs = tf.layers.dense(d_outs, 2)
@@ -423,7 +423,7 @@ class rec_model():
 
 
                 cordr = tf.reverse(cord, [-1])
-                crop = tf.image.extract_glimpse(MapIn, tf.constant([64,64]), cordr, centered=True, normalized=False)
+                crop = tf.image.extract_glimpse(MapIn, tf.constant([self.config['big_window'],self.config['big_window']]), cordr, centered=True, normalized=False)
 
                 crop_ = tf.layers.conv2d(crop, 1, [4, 4], strides=[2, 2], padding='valid', name="conv",
                                          activation=tf.nn.leaky_relu)
@@ -431,12 +431,12 @@ class rec_model():
 
                 crop_ = tf.layers.average_pooling2d(crop_, [5, 5], [4,4])
 
-                mini_crop = tf.image.extract_glimpse(MapIn, tf.constant([5, 5]), cordr, centered=True, normalized=False)
-                mini_crop = tf.layers.dense(tf.layers.flatten(mini_crop), 16, activation=tf.nn.leaky_relu,
+                mini_crop = tf.image.extract_glimpse(MapIn, tf.constant([self.config['small_window'],self.config['small_window']]), cordr, centered=True, normalized=False)
+                mini_crop = tf.layers.dense(tf.layers.flatten(mini_crop), 32, activation=tf.nn.leaky_relu,
                                             name="mionidense")
 
 
-                cropt = tf.layers.dense(tf.layers.flatten(crop_), 16, activation=tf.nn.leaky_relu, name="bigdense")
+                cropt = tf.layers.dense(tf.layers.flatten(crop_), 32, activation=tf.nn.leaky_relu, name="bigdense")
 
                 xd = tf.concat([xo, st, cords, cropt, mini_crop], -1)
                 xd = tf.layers.dense(xd, self.state_size, name="tostatesize")
@@ -495,16 +495,16 @@ class rec_model():
 
 
                 cordr=tf.reverse(cord,[-1])
-                crop = tf.image.extract_glimpse(MapIn, tf.constant([32,32]), cordr,centered=True,normalized=False,name="big_extraction")
+                crop = tf.image.extract_glimpse(MapIn, tf.constant([self.config['big_window'],self.config['big_window']]), cordr,centered=True,normalized=False,name="big_extraction")
                 crop_ = tf.layers.conv2d(crop,1, [4,4],strides=[2,2], padding='valid',name="conv",activation=tf.nn.leaky_relu)
 
 
                 crop_ = tf.layers.average_pooling2d(crop_,[5,5],[2,2],name="AVG_POOL")
-                mini_crop=tf.image.extract_glimpse(MapIn, tf.constant([5,5]), cordr,centered=True,normalized=False,name="small_extraction")
-                mini_crop=tf.layers.dense(tf.layers.flatten(mini_crop),16,activation=tf.nn.leaky_relu,name="mionidense")
+                mini_crop=tf.image.extract_glimpse(MapIn, tf.constant([self.config['small_window'],self.config['small_window']]), cordr,centered=True,normalized=False,name="small_extraction")
+                mini_crop=tf.layers.dense(tf.layers.flatten(mini_crop),32,activation=tf.nn.leaky_relu,name="mionidense")
 
 
-                cropt = tf.layers.dense(tf.layers.flatten(crop_),16,activation=tf.nn.leaky_relu,name="bigdense")
+                cropt = tf.layers.dense(tf.layers.flatten(crop_),32,activation=tf.nn.leaky_relu,name="bigdense")
 
                 xd = tf.concat([xo,cropt,mini_crop], -1)
                 xd = tf.layers.dense(xd, self.state_size,name="tostatesize")
@@ -771,13 +771,13 @@ class rec_model():
         scores=[]
         stck=tf.stack(self.out)
         mask = np.ones(shape=[self.config['batch'], self.config['pred_ext'] + self.config['fut_leng']])
-        #scales = np.arange(3.0, 1.0, -(2.0 / float(self.config['pred_ext'] + self.config['fut_leng'])))
-        #mask = mask * scales
+        scales = np.arange(3.0, 1.0, -(2.0 / float(self.config['pred_ext'] + self.config['fut_leng'])))
+        mask = mask * scales
         to_list=tf.unstack(stck)
         bg = tf.cumsum(self.target, -2)
         for i,o in enumerate(to_list):
             sqrd_diff = tf.reduce_sum(tf.squared_difference(o, bg), -1)
-            #sqrd_diff = sqrd_diff * mask
+            sqrd_diff = sqrd_diff * mask
 
 
             scores.append(sqrd_diff)
