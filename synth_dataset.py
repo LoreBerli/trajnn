@@ -18,7 +18,7 @@ import time
 
 
 class TrackDataset():
-    def __init__(self, past_len, fut_len, n_roads=5, scale=80, pad=480, radius=9, transform=None):
+    def __init__(self, past_len,fut_len, n_roads=3, scale=60, pad=800, radius=9, transform=None):
 
         self.past_len = past_len
         self.fut_len = fut_len
@@ -74,32 +74,44 @@ class TrackDataset():
         return ms
 
     def gen(self):
-        old=20
+        old = 10
+        extra = 60
         m = np.zeros((self.scale + self.pad, self.scale + self.pad))
+        gDD = np.array([-1, 0], np.float64)
+        pasts = []
+        futs = []
         for _ in range(self.n_roads):
-            g = self.genTrack(self.traj_len + old, np.array([-1, 0], np.float64), 0.01, 0.05, 0.05)
+            iidx = random.randint(20, 60)
+            g = self.genTrack(self.traj_len + old + extra, gDD, 0.01, 0.06, 0.01)
+            gDD = g[iidx]
             scaled_track = g * self.scale / 2 + self.scale / 2 + self.pad / 2
-            past = scaled_track[old:self.past_len + old]
-            future = scaled_track[old + self.past_len:]
+            pst = scaled_track[old:self.past_len + old]
+            pasts.append(pst)
+            fut = scaled_track[old + self.past_len:-extra]
+            futs.append(fut)
             scaled_track_int = scaled_track.astype(np.int)
             m = self.paint(m, scaled_track_int)
 
-
+        tra = random.randint(0, len(pasts) - 1)
+        past = pasts[tra]
+        future = futs[tra]
         last_pt = past[-1]
         size = 160
         last_pt = last_pt.astype(np.int)
+        m += m * 2 - np.array(ndimage.binary_erosion(m, structure=self.fil).astype(np.int))
         m = m[last_pt[1] - size:last_pt[1] + size, last_pt[0] - size:last_pt[0] + size]
 
 
-        m+=m*2-np.array(ndimage.binary_erosion(m,structure=self.fil).astype(np.int))
 
 
         past = np.squeeze(past - last_pt).astype(np.float32)/2.0
         future = np.squeeze(future - last_pt).astype(np.float32)/2.0
 
         m = np.expand_dims(m, 0)
+
         mapp=np.array(m)
         self.count-=1
+
         return 0,past,future,[0,0],0,0,1,mapp,mapp
 
 
