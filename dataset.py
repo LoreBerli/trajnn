@@ -145,7 +145,7 @@ class TrackDataset:
                             matRot_scene = cv2.getRotationMatrix2D((self.dim_clip, self.dim_clip), angle, 1)
                             st = cv2.transform(st.reshape(-1, 1, 2), matRot_track).squeeze()
                             fu = cv2.transform(fu.reshape(-1, 1, 2), matRot_track).squeeze()
-                            scene= cv2.warpAffine(scene, matRot_scene, (scene.shape[0], scene.shape[1]), borderValue=0, flags=cv2.INTER_NEAREST)
+                            scene=          cv2.warpAffine(scene,         matRot_scene, (scene.shape[0], scene.shape[1]), borderValue=0, flags=cv2.INTER_NEAREST)
                             scene_one_hot = cv2.warpAffine(scene_one_hot, matRot_scene,(scene.shape[0], scene.shape[1]),borderValue=(1, 0, 0, 0), flags=cv2.INTER_NEAREST)
 
                         ##############

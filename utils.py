@@ -8,6 +8,7 @@ import glob
 import cv2
 import utils
 
+
 # video_XXXXXX
 #  - frame_X
 #       - object_X
@@ -16,8 +17,7 @@ import utils
 #            - present
 #            - class
 #            - box
-#test_set = ["../kitti_rev2/training/" + d for d in os.listdir("../kitti_rev2/training/")]
-
+# test_set = ["../kitti_rev2/training/" + d for d in os.listdir("../kitti_rev2/training/")]
 
 
 class Loader():
@@ -30,8 +30,8 @@ class Loader():
 
     def __init__(self, config):
         self.cfg = config
-        self.q = mp.Queue(self.cfg['batch']*self.cfg['splits']*4)
-        self.q_test = mp.Queue(self.cfg['batch']*10)
+        self.q = mp.Queue(self.cfg['batch'] * self.cfg['splits'] * 4)
+        self.q_test = mp.Queue(self.cfg['batch'] * 10)
 
         self.path = self.cfg['json_path']
         splits = self.cfg['splits']
@@ -40,14 +40,14 @@ class Loader():
 
         f_videos = [v for v in self.videos if v in test_set]
         t_videos = [v for v in self.videos if v not in test_set]
-        if(self.cfg['fine']):
-            real_t=[]
+        if (self.cfg['fine']):
+            real_t = []
             for t in t_videos:
-                nm=t.split("/")[-1]
-                if not (nm.startswith("AMBA")) and not(nm.startswith("stuttgart")):
+                nm = t.split("/")[-1]
+                if not (nm.startswith("AMBA")) and not (nm.startswith("stuttgart")):
                     print(nm)
                     real_t.append(t)
-            t_videos=real_t
+            t_videos = real_t
         print("there are {0} test videos".format(str(len(f_videos))))
         print("there are {0} train videos".format(str(len(t_videos))))
         self.videos = t_videos
@@ -106,6 +106,7 @@ class Loader():
             X[b, :] = x
             gt[b, :] = g
         return X, gt, feat, boxes, info, imgs
+
 
 class Feeder():
 
@@ -171,15 +172,14 @@ class Feeder():
         gg = img.f.seg_map
         gg = gg.astype('float32')
         sx = img.f.dims[0]
-        sy=img.f.dims[1]
-
+        sy = img.f.dims[1]
 
         # channels = [0, 1, 12, 13, 18]
         # mat = np.eye(19)[np.array(gg, dtype=np.int32)]
         # mat_clean = np.zeros([128, 256, len(channels)])
         # for i, j in enumerate(channels):
         #     mat_clean[:, :, i] = mat[:, :, j]
-        mat_clean=gg
+        mat_clean = gg
         return mat_clean, sx, sy
 
     def smooth(self, y, N=4):
@@ -224,8 +224,6 @@ class Feeder():
             twod_points.append([x, y])
         return np.array(twod_points)
 
-
-
     def _feed(self):
         while True:
             random.shuffle(self.vid_frm)
@@ -238,31 +236,31 @@ class Feeder():
                 for object in self.d[frame]:
                     cls = self.d[frame][object]["track_class_name"]
                     bbox_ = self.d[frame][object]["box"]
-                    bbox=[0,0,0,0]
-                    if(self.cfg['center']):
-                        bbox[0] = (bbox_[0] / (sx / 2.0))-1.0
-                        bbox[1] = (bbox_[1] / float(sy))-0.5
-                        bbox[2] = (bbox_[2] / (sx / 2.0))-1.0
-                        bbox[3] = (bbox_[3] / float(sy))-0.5
+                    bbox = [0, 0, 0, 0]
+                    if (self.cfg['center']):
+                        bbox[0] = (bbox_[0] / (sx / 2.0)) - 1.0
+                        bbox[1] = (bbox_[1] / float(sy)) - 0.5
+                        bbox[2] = (bbox_[2] / (sx / 2.0)) - 1.0
+                        bbox[3] = (bbox_[3] / float(sy)) - 0.5
 
                     else:
-                        bbox[0] = bbox[0] / (sx/2.0)
+                        bbox[0] = bbox[0] / (sx / 2.0)
                         bbox[1] = bbox[1] / sy
-                        bbox[2] = bbox[2] / (sx/2.0)
+                        bbox[2] = bbox[2] / (sx / 2.0)
                         bbox[3] = bbox[3] / sy
-
 
                     if (len(self.d[frame][object]["future"]) >= self.cfg['fut_leng']) and (
                             len(self.d[frame][object]["past"]) >= self.cfg['prev_leng'] - 1):
                         gt = np.clip(np.array(self.d[frame][object]["future"][0:self.cfg['fut_leng']]), -1000, 3000)
-                        past = np.clip(np.array(self.d[frame][object]["past"][-self.cfg['prev_leng'] + 1:]), -1000,3000)
+                        past = np.clip(np.array(self.d[frame][object]["past"][-self.cfg['prev_leng'] + 1:]), -1000,
+                                       3000)
                         #############
                         if (np.sqrt(np.sum(np.square(gt[-1] - past[0]))) > 40):
                             pres = np.array(self.d[frame][object]["present"])
                             X = np.concatenate((past, np.expand_dims(pres, 0)), 0)
-                            conc=np.concatenate((X, gt),0)/np.array(((sx/2.0),float(sy)),dtype=np.float)
-                            if(self.cfg['center']):
-                                conc=conc-np.array([1.0,0.5])
+                            conc = np.concatenate((X, gt), 0) / np.array(((sx / 2.0), float(sy)), dtype=np.float)
+                            if (self.cfg['center']):
+                                conc = conc - np.array([1.0, 0.5])
                             tot = self.smooth(conc)
                             self.q.put([tot[0:self.cfg['prev_leng']], tot[self.cfg['prev_leng']:], bbox,
                                         [pt, frame, object, sx, sy, cls], img])

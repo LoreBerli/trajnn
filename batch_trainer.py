@@ -8,7 +8,9 @@ def get_config(cf):
 
 def main():
     for cfs in os.listdir("confs"):
+
         cfg=get_config("confs/"+cfs)
+        print(cfs+str(cfg['load']))
         path=train_top_view.train_multiple(cfg)
         cfg['load_path']=path+"/model/model.ckpt"
         cfg['test']=True
