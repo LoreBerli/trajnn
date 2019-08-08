@@ -65,11 +65,12 @@ cm = LinearSegmentedColormap.from_list(
 
 
 class TrackDataset:
-    def __init__(self, tracks, num_istances, num_labels, train, dim_clip,rot,shf):
+    def __init__(self,h,q,cfg, tracks, num_istances, num_labels, train, dim_clip,rot,shf):
 
         self.tracks = tracks
+        self.cfg=cfg
         self.dim_clip = dim_clip
-
+        self.q=q
         self.video_track = []   # '0001'
         self.vehicles = []      # 'Car'
         self.number_vec = []    # '4'
@@ -82,6 +83,15 @@ class TrackDataset:
         self.rot=rot
         num_total = num_istances + num_labels
         self.video_split = self.get_desire_track_files(train)
+
+        tot_vids=len(self.video_split)
+        if(train):
+            step=8
+        else:
+            step=4
+        print("pre ",len(self.video_split))
+        self.video_split=self.video_split[h*(tot_vids/step):(h+1)*(tot_vids/step)]
+        print(len(self.video_split))
         random.shuffle(self.video_split)
         #pdb.set_trace()
         for video in self.video_split:
@@ -172,6 +182,7 @@ class TrackDataset:
         self.scene = np.array(self.scene)
 
         self.scene_one_hot = np.array(self.scene_one_hot)
+
         # self.scene_one_hot = to_categorical(self.scene_one_hot)
 
     def save_scenes_with_tracks(self,folder_save):
@@ -258,6 +269,36 @@ class TrackDataset:
 
     def __getitem__(self, idx):
         return self.index[idx], self.istances[idx], self.labels[idx], self.presents[idx], self.video_track[idx], self.vehicles[idx], self.number_vec[idx], self.scene[idx], self.scene_one_hot[idx]
+
+    def populate_queue(self):
+        i=0
+        while(True):
+            X = np.zeros([self.cfg['batch'], self.cfg['prev_leng'], self.cfg['dims']])
+            gt = np.zeros([self.cfg['batch'], self.cfg['fut_leng'], self.cfg['dims']])
+            imgs = []
+            imgas=[]
+            for b in range(0, self.cfg['batch']):
+                '''
+                istances --> past       (batch_size, past_len, 2)
+                labels ----> future     (batch_size, future_len, 2)
+                scene -----> map        (batch_size, 360, 360)
+                '''
+
+                _, istances, labels, _, _, _, _, scene, _ = self[i%self.__len__()]
+                X[b, :] = istances
+                gt[b, :] = labels
+                sc=scene.transpose([1, 2, 0])
+                m = np.eye(4)[np.array(sc, dtype=np.int32)]
+                m = np.squeeze(m)
+                imgs.append(m)
+                imgas.append(sc)
+                # info.append([(index,video_track,number_vec)])
+                b += 1
+                i += 1
+
+            toX = np.array(X)
+            toGT = np.array(gt)
+            self.q.put([toX, toGT, " ", imgs,imgas])
 
     def __len__(self):
         return len(self.istances)

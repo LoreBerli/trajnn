@@ -336,14 +336,14 @@ def train_multiple(cfg):
             for i in range(0, 1000):
 
                 if(cfg['real_data'] and not cfg['synth_data']):
-                    x, gt, _, img = loader.serve()
+                    x, gt, _, img,_ = loader.serve_multiprocess_train()
                 if(cfg['synth_data'] and not cfg['real_data']):
                     x, gt, _, img,_ = loader_s.serve_multiprocess()
 
                 elif(cfg['synth_data'] and cfg['real_data'] and e<cfg['pretrain']):
                     x, gt, _, img,_ = loader_s.serve_multiprocess()
                 else:
-                    x, gt, _, img = loader.serve()
+                    x, gt, _, img,_ = loader.serve_multiprocess_train()
 
                 #
                 # if (e < 6 and i % 2 == 0):
@@ -372,9 +372,9 @@ def train_multiple(cfg):
                             x, gt, info, imgd,imga = loader_s.serve_multiprocess()
 
                         else:
-                            x, gt, info, imga = loader.serve_random_test()
-                            imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
-                            imgd = np.squeeze(imgd)
+                            x, gt, info, imgd,imga = loader.serve_multiprocess_test()
+                            # imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
+                            # imgd = np.squeeze(imgd)
 
 
                         noiz = np.random.randn(cfg['batch'], 8)

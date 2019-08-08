@@ -45,7 +45,8 @@ class Loader():
         tracks = json.load(open("multiple-futures/world_traj_kitti.json"))
         print("TRACKS_init")
         dim_clip = self.cfg['dim_clip']
-
+        self.train_q=mp.Queue(256)
+        self.test_q = mp.Queue(32)
         past_len = self.cfg['prev_leng']
         future_len = self.cfg['fut_leng']
         # self.q = mp.Queue(self.cfg['batch']*self.cfg['splits']*4)
@@ -65,16 +66,43 @@ class Loader():
             self.data_test = dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len, train=False, dim_clip=dim_clip,rot=False,shf=False)
 
         else:
-            self.trains=[]
-            for k in range(0,2):
-                self.trains.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
-                                              train=True, dim_clip=dim_clip,rot=True,shf=True)))
+            train_thrds = []
+            # self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
+            for h in range(0, 4):
+                tr = dataset.TrackDataset(h,self.train_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
+                                              train=True, dim_clip=dim_clip,rot=True,shf=True)
+                thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
+                thread.daemon = True
+                print("train_loader_thread" + thread.name + "_init")
+                train_thrds.append(thread)
+            for t in train_thrds:
+                t.start()
+                # thread.join()
+                print("Synth_loader_thread" + t.name + "_start")
 
+            test_thrds = []
+            # self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
+            for h in range(0, 4):
+                tr = dataset.TrackDataset(h,self.test_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
+                                              train=False, dim_clip=dim_clip,rot=False,shf=True)
+                thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
+                thread.daemon = True
+                print("Test_loader_thread" + thread.name + "_init")
+                test_thrds.append(thread)
+            for t in test_thrds:
+                t.start()
+                # thread.join()
+                print("Test_loader_thread" + t.name + "_start")
 
-            self.iters=[]
-            for i in range(0,2):
-                self.iters.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
-                                             train=False, dim_clip=dim_clip,rot=False,shf=True)))
+            # for k in range(0,2):
+            #     self.trains.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
+            #                                   train=True, dim_clip=dim_clip,rot=True,shf=True)))
+            #
+            #
+            # self.iters=[]
+            # for i in range(0,2):
+            #     self.iters.append(itertools.cycle(dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len,
+            #                                  train=False, dim_clip=dim_clip,rot=False,shf=True)))
 
         #self.iter_rand_test = itertools.cycle(self.data_rand_test)
     def serve(self):
@@ -97,25 +125,13 @@ class Loader():
             b+=1
         return np.array(X), np.array(gt), info, imgs
 
-    def serve_q(self):
-        X = np.zeros([self.cfg['batch'], self.cfg['prev_leng'], self.cfg['dims']])
-        gt = np.zeros([self.cfg['batch'], self.cfg['fut_leng'], self.cfg['dims']])
-        info = []
-        imgs = []
-        for b in range(0,self.cfg['batch']):
-            '''
-            istances --> past       (batch_size, past_len, 2)
-            labels ----> future     (batch_size, future_len, 2)
-            scene -----> map        (batch_size, 360, 360)
-            '''
+    def serve_multiprocess_train(self):
+        toX,toGT,info,imgs,imga= self.train_q.get()
+        return toX,toGT,info,imgs,imga
 
-            index, istances, labels, presents, video_track, vehicles, number_vec, scene, scene_one_hot = next(self.trains[b%2])
-            X[b,:]=istances
-            gt[b,:]=labels
-            imgs.append(scene.transpose([1,2,0]))
-            info.append([(index,video_track,number_vec)])
-            b+=1
-        return np.array(X), np.array(gt), info, imgs
+    def serve_multiprocess_test(self):
+        toX,toGT,info,imgs,imga= self.test_q.get()
+        return toX,toGT,info,imgs,imga
 
     def serve_test(self):
 
