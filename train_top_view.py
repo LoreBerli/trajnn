@@ -338,9 +338,10 @@ def train_multiple(cfg):
                 if(cfg['real_data'] and not cfg['synth_data']):
                     x, gt, _, img = loader.serve()
                 if(cfg['synth_data'] and not cfg['real_data']):
-                    x, gt, _, img = loader_s.serve()
+                    x, gt, _, img,_ = loader_s.serve_multiprocess()
+
                 elif(cfg['synth_data'] and cfg['real_data'] and e<cfg['pretrain']):
-                    x, gt, _, img = loader_s.serve()
+                    x, gt, _, img,_ = loader_s.serve_multiprocess()
                 else:
                     x, gt, _, img = loader.serve()
 
@@ -350,8 +351,8 @@ def train_multiple(cfg):
                 # else:
                 #     x, gt, _, img = loader.serve()
                 noiz = np.random.randn(cfg['batch'], 8)
-                img = np.eye(4)[np.array(img, dtype=np.int32)]
-                img = np.squeeze(img)
+                # img = np.eye(4)[np.array(img, dtype=np.int32)]
+                # img = np.squeeze(img)
 
                 ls, _ = sess.run([mod.loss, mini],
                                  feed_dict={inpts: utils.to_offsets(x), mod.noiz: noiz, outs: utils.to_offsets(gt),
@@ -368,13 +369,18 @@ def train_multiple(cfg):
                     all_ade_at_t = []
                     for tst in range(0, 5):
                         if (tst == 1):
-                            x, gt, info, imga = loader_s.serve()
+                            x, gt, info, imgd,imga = loader_s.serve_multiprocess()
+
                         else:
                             x, gt, info, imga = loader.serve_random_test()
+                            imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
+                            imgd = np.squeeze(imgd)
+
 
                         noiz = np.random.randn(cfg['batch'], 8)
-                        imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
-                        imgd = np.squeeze(imgd)
+                        #imgd=imga
+                        # imgd = np.eye(4)[np.array(imga, dtype=np.int32)]
+                        # imgd = np.squeeze(imgd)
 
                         old_c, imc, summary, ls, o, dspec = sess.run(
                             [mod.coo, mod.crops, merge, mod.loss, mod.out, mod.d_spec],
@@ -455,4 +461,4 @@ def main(cf="config.yaml"):
     # train_GAN()
 
 
-#main()
+main()

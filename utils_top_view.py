@@ -8,6 +8,7 @@ import glob
 import itertools
 import synth_dataset
 import cv2
+import time
 import dataset
 import utils
 
@@ -96,6 +97,26 @@ class Loader():
             b+=1
         return np.array(X), np.array(gt), info, imgs
 
+    def serve_q(self):
+        X = np.zeros([self.cfg['batch'], self.cfg['prev_leng'], self.cfg['dims']])
+        gt = np.zeros([self.cfg['batch'], self.cfg['fut_leng'], self.cfg['dims']])
+        info = []
+        imgs = []
+        for b in range(0,self.cfg['batch']):
+            '''
+            istances --> past       (batch_size, past_len, 2)
+            labels ----> future     (batch_size, future_len, 2)
+            scene -----> map        (batch_size, 360, 360)
+            '''
+
+            index, istances, labels, presents, video_track, vehicles, number_vec, scene, scene_one_hot = next(self.trains[b%2])
+            X[b,:]=istances
+            gt[b,:]=labels
+            imgs.append(scene.transpose([1,2,0]))
+            info.append([(index,video_track,number_vec)])
+            b+=1
+        return np.array(X), np.array(gt), info, imgs
+
     def serve_test(self):
 
         X = np.zeros([self.cfg['batch'], self.cfg['prev_leng'], self.cfg['dims']])
@@ -162,6 +183,7 @@ class Loader():
         return np.array(X), np.array(gt), info, imgs
 
 class Loader_synth():
+
     def get_top_paths(self, pt):
         tops = []
         for top_d in os.listdir(pt):
@@ -171,16 +193,26 @@ class Loader_synth():
 
     def __init__(self, config):
         self.cfg = config
+        self.q = mp.Queue(maxsize=256)
 
-        print("TRACKS_init")
+        print("Synth_loader_init")
 
         past_len = self.cfg['prev_leng']
         future_len = self.cfg['fut_leng']
 
-
-        self.data_train = synth_dataset.TrackDataset(past_len,future_len)
-
-        self.iter_train = self.data_train
+        thrds=[]
+        #self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
+        for h in range(0,16):
+            tr=synth_dataset.TrackDataset(20, 40,queue=self.q,cfg=self.cfg, old=50, extra=50, scale=1, n_roads=3)
+            thread=mp.Process(target=tr.populate_queue,name="thr"+str(h))
+            thread.daemon = True
+            print("Synth_loader_thread" + thread.name + "_init")
+            thrds.append(thread)
+        for t in thrds:
+            t.start()
+            #thread.join()
+            print("Synth_loader_thread" + t.name + "_init")
+        #self.iter_train = self.data_train
 
 
 
@@ -205,6 +237,10 @@ class Loader_synth():
         toGT=np.array(gt)
 
         return toX,toGT, None, imgs
+
+    def serve_multiprocess(self):
+        toX,toGT,info,imgs,imga= self.q.get()
+        return toX,toGT,info,imgs,imga
 
     def serve_test(self):
 
