@@ -232,7 +232,7 @@ class rec_model():
                                 diff = my_b - bias
                                 inps = inps - diff
 
-                                for iter in range(0,2):
+                                for iter in range(0,self.config['refinement']):
                                     cl = tfn.GRUCell(self.state_size, name="second",reuse=(iter!=0))
                                     d_outs,BXIN= self.small_map_self_feeding_rnn(cl,self.config['fut_leng'] + self.config['pred_ext'],inps, cl.zero_state(self.config['batch'],tf.float32), map_in,name="sm_map",res=(iter!=0))
                                     inps=d_outs
@@ -419,7 +419,7 @@ class rec_model():
                 sum_stack=sum.stack()
                 sum_trra=tf.transpose(sum_stack, perm=[1, 0,2])
                 sum_red=tf.reduce_sum(sum_trra,1)
-                cord = (sum_red+cords) * 4.0  # tf.layers.dense(cords,2,activation=tf.nn.tanh)
+                cord = (sum_red+cords)*2.0 # tf.layers.dense(cords,2,activation=tf.nn.tanh)
 
 
                 cordr = tf.reverse(cord, [-1])
@@ -491,7 +491,7 @@ class rec_model():
 
             def do_time_step(i, state, xo, ta, inp_ta,cords,crps,co_s):
                 st = inp_ta.read(i)
-                cord = st*4.0#tf.layers.dense(cords,2,activation=tf.nn.tanh)
+                cord = st*2.0#tf.layers.dense(cords,2,activation=tf.nn.tanh)
 
 
                 cordr=tf.reverse(cord,[-1])

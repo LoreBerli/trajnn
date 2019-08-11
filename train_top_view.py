@@ -182,7 +182,7 @@ def test_multiple(cfg):
     else:
         mini = opti.minimize(mod.loss)
 
-    loader = utils.Loader(cfg)
+    loader = utils.Loader(cfg,True)
 
     init = tf.initializers.global_variables()
     saver = tf.train.Saver()
@@ -252,7 +252,10 @@ def test_multiple(cfg):
 
             for k in range(cfg['batch']):
                 preds = futures
-                all_errors = np.sqrt(np.sum(((preds[k] - gt[k]) ** 2), -1))
+                gt_s = gt[k] / 2.0
+                pre_s = preds[k] / 2.0
+                all_errors = np.sqrt(np.sum(((pre_s - gt_s) ** 2), -1))
+
                 best_future_id = np.argmin(np.mean(all_errors, -1))
                 best_future_errors_at_t = all_errors[best_future_id]
                 best_future_ade_at_t = np.divide(np.cumsum(best_future_errors_at_t),
@@ -294,8 +297,11 @@ def train_multiple(cfg):
     else:
         mini = opti.minimize(mod.loss)
 
-    loader = utils.Loader(cfg)
+    #if(cfg['real_data']):
+    #    loader = utils.Loader(cfg,False)
+    #if(cfg['synth_data']):
     loader_s = utils.Loader_synth(cfg)
+    loader = utils.Loader(cfg,False)
 
     init = tf.initializers.global_variables()
     saver = tf.train.Saver()
@@ -331,8 +337,8 @@ def train_multiple(cfg):
         # test_writer = tf.summary.FileWriter(newp + "/data", sess.graph)
         print(newp)
         for e in range(cfg['epochs']):
-            last = len(gc.get_objects())
             t_l = 0
+            tt=time.time()
             for i in range(0, 1000):
 
                 if(cfg['real_data'] and not cfg['synth_data']):
@@ -361,14 +367,16 @@ def train_multiple(cfg):
                 t_l += ls
 
                 if (i % 100 == 0):
+                    print(time.time()-tt)
+                    tt=time.time()
                     print("TRAIN ", t_l / 100.0)
                     t_l = 0.0
-                if (i == 1):
+                if (i ==1):
                     summ = 0
                     all_errors_at_t = []
                     all_ade_at_t = []
-                    for tst in range(0, 5):
-                        if (tst == 1):
+                    for tst in range(0, 10):
+                        if (tst == 1 and cfg['synth_data']):
                             x, gt, info, imgd,imga = loader_s.serve_multiprocess()
 
                         else:
@@ -392,21 +400,28 @@ def train_multiple(cfg):
 
                         futures = np.array(o)
                         futures = np.transpose(futures, [1, 0, 2, 3])
-
+                        # print(gt.shape)
+                        # print (futures.shape)
                         for k in range(cfg['batch']):
-                            preds = futures
 
-                            all_errors = np.sqrt(np.sum(((preds[k] - gt[k]) ** 2), -1))
+                            # futures[k][0] = gt[k]
+                            # futures[k][0][-1][0] = futures[k][0][-1][0] + 1.0
+                            preds = futures
+                            gt_s=gt[k]/2.0
+                            pre_s=preds[k]/2.0
+
+
+                            all_errors = np.sqrt(np.sum(((pre_s - gt_s) ** 2), -1))
                             best_future_id = np.argmin(np.mean(all_errors, -1))
                             best_future_errors_at_t = all_errors[best_future_id]
                             best_future_ade_at_t = np.divide(np.cumsum(best_future_errors_at_t),
                                                              np.arange(1, cfg['fut_leng'] + 1))
+
                             drawer.draw_scenes(old_c[k][-1], imc[k][-1, :], imga[k],
                                                str(e) + "-" + str(tst) + "-" + str(k), newp, futures=futures[k, :],
                                                past=x[k],
                                                gt=gt[k], dim=cfg['dim_clip'], weird=dspec[k],
                                                text=str(best_future_errors_at_t), special=best_future_id)
-
                             drawer.draw_crops(imc[k], str(k), newp, dspec[k])
                             all_errors_at_t.append(best_future_errors_at_t)
                             all_ade_at_t.append(best_future_ade_at_t)
@@ -418,9 +433,9 @@ def train_multiple(cfg):
                     print(str(np.mean(summ)) + " iteration " + str(i) + "of " + str(1000) + " ,at epoch " + str(
                         e) + " of " + str(cfg['epochs']))
 
-            if (e % 2 == 0):
+            if (e % 6 == 0):
                 print("SAVING " + newp)
-                saver.save(sess, newp + "/model/model.ckpt")
+                saver.save(sess, newp + "/model/model_at_ep_"+str(e)+".ckpt")
 
         return newp
 

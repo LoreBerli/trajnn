@@ -85,15 +85,16 @@ class TrackDataset:
         self.video_split = self.get_desire_track_files(train)
 
         tot_vids=len(self.video_split)
-        if(train):
-            step=8
-        else:
-            step=4
-        print("pre ",len(self.video_split))
-        self.video_split=self.video_split[h*(tot_vids/step):(h+1)*(tot_vids/step)]
-        print(len(self.video_split))
+        if(not self.cfg['test']):
+            if(train):
+                step=1
+            else:
+                step=1
+            print("pre ",len(self.video_split))
+            self.video_split=self.video_split[h*(tot_vids/step):(h+1)*(tot_vids/step)]
+            print(len(self.video_split))
         random.shuffle(self.video_split)
-        #pdb.set_trace()
+
         for video in self.video_split:
             vehicles = self.tracks[video].keys()
 
@@ -132,13 +133,13 @@ class TrackDataset:
                         #     st = np.zeros((20,2))
                         # else:
                         st = temp_istance - origin
-                        st=st
+                        st=st*2.0
                         #
                         # if np.var(temp_istance[:,0]) < 0.1 and np.var(temp_istance[:,1]) < 0.1:
                         #     fu = np.zeros((40,2))
                         # else:
                         fu = temp_label - origin
-                        fu=fu
+                        fu=fu*2.0
                         scene = scene_track[int(origin[1]) * 2 - self.dim_clip:int(origin[1]) * 2 + self.dim_clip,
                                            int(origin[0]) * 2 - self.dim_clip:int(origin[0]) * 2 + self.dim_clip]
 
@@ -360,13 +361,13 @@ class TrackDataset_infer:
                         #     st = np.zeros((20,2))
                         # else:
                         st = temp_istance - origin
-                        st=st
+                        st=st*2.0
                         #
                         # if np.var(temp_istance[:,0]) < 0.1 and np.var(temp_istance[:,1]) < 0.1:
                         #     fu = np.zeros((40,2))
                         # else:
                         fu = temp_label - origin
-                        fu=fu
+                        fu=fu*2.0
                         scene = scene_track[int(origin[1]) * 2 - self.dim_clip:int(origin[1]) * 2 + self.dim_clip,
                                            int(origin[0]) * 2 - self.dim_clip:int(origin[0]) * 2 + self.dim_clip]
 
@@ -384,7 +385,7 @@ class TrackDataset_infer:
                             st = cv2.transform(st.reshape(-1, 1, 2), matRot_track).squeeze()
                             fu = cv2.transform(fu.reshape(-1, 1, 2), matRot_track).squeeze()
                             scene= cv2.warpAffine(scene, matRot_scene, (scene.shape[0], scene.shape[1]), borderValue=0, flags=cv2.INTER_NEAREST)
-                            scene_one_hot = cv2.warpAffine(scene_one_hot, matRot_scene,(scene.shape[0], scene.shape[1]),borderValue=(1, 0, 0, 0), flags=cv2.INTER_NEAREST)
+                            #scene_one_hot = cv2.warpAffine(scene_one_hot, matRot_scene,(scene.shape[0], scene.shape[1]),borderValue=(1, 0, 0, 0), flags=cv2.INTER_NEAREST)
 
                         ##############
                         scene = np.expand_dims(scene, 0)
@@ -398,7 +399,7 @@ class TrackDataset_infer:
                         self.vehicles.append(class_vec)
                         self.number_vec.append(num_vec)
                         self.scene.append(scene)
-                        self.scene_one_hot.append(scene_one_hot)
+                        #self.scene_one_hot.append(scene_one_hot)
 
         self.index = np.array(self.index)
         self.istances = self.istances
@@ -409,7 +410,7 @@ class TrackDataset_infer:
         self.number_vec = np.array(self.number_vec)
         self.scene = np.array(self.scene)
 
-        self.scene_one_hot = np.array(self.scene_one_hot)
+        self.scene_one_hot = self.scene
         # self.scene_one_hot = to_categorical(self.scene_one_hot)
 
     def save_scenes_with_tracks(self,folder_save):

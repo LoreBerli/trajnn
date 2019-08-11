@@ -39,14 +39,14 @@ class Loader():
                 tops.append(pt + "/" + top_d + "/" + video)
         return tops
 
-    def __init__(self, config):
+    def __init__(self, config,only_test):
         self.cfg = config
 
         tracks = json.load(open("multiple-futures/world_traj_kitti.json"))
         print("TRACKS_init")
         dim_clip = self.cfg['dim_clip']
-        self.train_q=mp.Queue(256)
-        self.test_q = mp.Queue(32)
+        self.train_q=mp.Queue(32)
+        self.test_q = mp.Queue(8)
         past_len = self.cfg['prev_leng']
         future_len = self.cfg['fut_leng']
         # self.q = mp.Queue(self.cfg['batch']*self.cfg['splits']*4)
@@ -63,12 +63,26 @@ class Loader():
 
         #self.iter_train = itertools.cycle(self.data_train)
         if(config['test']):
-            self.data_test = dataset.TrackDataset(tracks, num_istances=past_len, num_labels=future_len, train=False, dim_clip=dim_clip,rot=False,shf=False)
+            self.data_test = dataset.TrackDataset(0,self.test_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len, train=False, dim_clip=dim_clip,rot=False,shf=False)
+
+        if(only_test):
+            test_thrds = []
+            for h in range(0, 1):
+                tr = dataset.TrackDataset(h,self.test_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
+                                              train=False, dim_clip=dim_clip,rot=False,shf=True)
+                thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
+                thread.daemon = True
+                print("Test_loader_thread" + thread.name + "_init")
+                test_thrds.append(thread)
+            for t in test_thrds:
+                t.start()
+                # thread.join()
+                print("Test_loader_thread" + t.name + "_start")
 
         else:
             train_thrds = []
             # self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-            for h in range(0, 4):
+            for h in range(0,1):
                 tr = dataset.TrackDataset(h,self.train_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
                                               train=True, dim_clip=dim_clip,rot=True,shf=True)
                 thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
@@ -82,7 +96,7 @@ class Loader():
 
             test_thrds = []
             # self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-            for h in range(0, 4):
+            for h in range(0, 2):
                 tr = dataset.TrackDataset(h,self.test_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
                                               train=False, dim_clip=dim_clip,rot=False,shf=True)
                 thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
@@ -209,7 +223,7 @@ class Loader_synth():
 
     def __init__(self, config):
         self.cfg = config
-        self.q = mp.Queue(maxsize=256)
+        self.q = mp.Queue(maxsize=9)
 
         print("Synth_loader_init")
 
@@ -218,7 +232,7 @@ class Loader_synth():
 
         thrds=[]
         #self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-        for h in range(0,16):
+        for h in range(0,3):
             tr=synth_dataset.TrackDataset(20, 40,queue=self.q,cfg=self.cfg, old=50, extra=50, scale=1, n_roads=3)
             thread=mp.Process(target=tr.populate_queue,name="thr"+str(h))
             thread.daemon = True

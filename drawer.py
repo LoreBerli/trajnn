@@ -132,7 +132,7 @@ def draw_scenes(sp_cord,sp_crop,im, k, path, futures,past,gt,dim,weird,text=None
 
     gf=gf.resize((dim*4,dim*4))
 
-    sp_cord=(np.array(sp_cord* 4, dtype=np.int32) ) + dim*2
+    sp_cord=(np.array(sp_cord* 2, dtype=np.int32) ) + dim*2
 
     h,w=sp_crop.shape[0:2]
 
@@ -146,24 +146,24 @@ def draw_scenes(sp_cord,sp_crop,im, k, path, futures,past,gt,dim,weird,text=None
     im_cro=Image.fromarray(xx)
     im_cro=im_cro.resize((h *2, w*2 ))
 
-    # gf.paste(im_cro,(sp_cord[0]-im_cro.size[0]/2,sp_cord[1]-im_cro.size[1]/2))
+    gf.paste(im_cro,(sp_cord[0]-im_cro.size[0]/2,sp_cord[1]-im_cro.size[1]/2))
     drawer = ImageDraw.Draw(gf)
-    # drawer.rectangle([(sp_cord[0] - 2, sp_cord[1] - 2), (sp_cord[0] + 2, sp_cord[1] + 2)], fill=(255, 255, 0))
-    # drawer.rectangle([(sp_cord[0] - 2-im_cro.size[0]/2, sp_cord[1] - 2-im_cro.size[0]/2), (sp_cord[0] + 2-im_cro.size[0]/2, sp_cord[1] + 2-im_cro.size[0]/2)], fill=(255, 255, 0))
+    drawer.rectangle([(sp_cord[0] - 2, sp_cord[1] - 2), (sp_cord[0] + 2, sp_cord[1] + 2)], fill=(255, 255, 0))
+    drawer.rectangle([(sp_cord[0] - 2-im_cro.size[0]/2, sp_cord[1] - 2-im_cro.size[0]/2), (sp_cord[0] + 2-im_cro.size[0]/2, sp_cord[1] + 2-im_cro.size[0]/2)], fill=(255, 255, 0))
 
     sz = 1
 
-    poins = (np.array(past* 4, dtype=np.int32) ) + dim*2
+    poins = (np.array(past* 2, dtype=np.int32) )+ dim*2
     lt = [tuple(p) for p in poins.tolist()]
     for i, l in enumerate(lt):
         r = min(255, 160 + i * 10)
-        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(r, 0, 0))
+        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(r, 0, 0))
 
-    poins = (np.array(gt* 4, dtype=np.int32)) + dim*2
+    poins = (np.array(gt* 2, dtype=np.int32)) + dim*2
     lt = [tuple(p) for p in poins.tolist()]
     for i, l in enumerate(lt):
         r = min(255, 160 + i * 10)
-        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(0, 0, r))
+        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(0, 0, r))
 
     # poins = (np.array(weird * 4, dtype=np.int32)) + dim * 2
     # lt = [tuple(p) for p in poins.tolist()]
@@ -175,7 +175,7 @@ def draw_scenes(sp_cord,sp_crop,im, k, path, futures,past,gt,dim,weird,text=None
     step=int(223/len(futures))
     for idx,future in enumerate(futures):
 
-        poins = (np.array(future* 4, dtype=np.int32)) + dim*2
+        poins = (np.array(future* 2, dtype=np.int32)) + dim*2
         lt = [tuple(p) for p in poins.tolist()]
         for i, l in enumerate(lt):
 
