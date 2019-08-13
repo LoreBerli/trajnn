@@ -340,16 +340,20 @@ def train_multiple(cfg):
             t_l = 0
             tt=time.time()
             for i in range(0, 1000):
+                if not cfg['combined']:
+                    if(cfg['real_data'] and not cfg['synth_data']):
+                        x, gt, _, img,_ = loader.serve_multiprocess_train()
+                    if(cfg['synth_data'] and not cfg['real_data']):
+                        x, gt, _, img,_ = loader_s.serve_multiprocess()
 
-                if(cfg['real_data'] and not cfg['synth_data']):
+                    elif(cfg['synth_data'] and cfg['real_data'] and e<cfg['pretrain']):
+                        x, gt, _, img,_ = loader_s.serve_multiprocess()
+                    else:
+                        x, gt, _, img,_ = loader.serve_multiprocess_train()
+                elif(i%2==0):
                     x, gt, _, img,_ = loader.serve_multiprocess_train()
-                if(cfg['synth_data'] and not cfg['real_data']):
-                    x, gt, _, img,_ = loader_s.serve_multiprocess()
-
-                elif(cfg['synth_data'] and cfg['real_data'] and e<cfg['pretrain']):
-                    x, gt, _, img,_ = loader_s.serve_multiprocess()
                 else:
-                    x, gt, _, img,_ = loader.serve_multiprocess_train()
+                    x, gt, _, img,_ = loader_s.serve_multiprocess()
 
                 #
                 # if (e < 6 and i % 2 == 0):
@@ -417,12 +421,12 @@ def train_multiple(cfg):
                             best_future_ade_at_t = np.divide(np.cumsum(best_future_errors_at_t),
                                                              np.arange(1, cfg['fut_leng'] + 1))
 
-                            drawer.draw_scenes(old_c[k][-1], imc[k][-1, :], imga[k],
-                                               str(e) + "-" + str(tst) + "-" + str(k), newp, futures=futures[k, :],
-                                               past=x[k],
-                                               gt=gt[k], dim=cfg['dim_clip'], weird=dspec[k],
-                                               text=str(best_future_errors_at_t), special=best_future_id)
-                            drawer.draw_crops(imc[k], str(k), newp, dspec[k])
+                            # drawer.draw_scenes(old_c[k][-1], imc[k][-1, :], imga[k],
+                            #                    str(e) + "-" + str(tst) + "-" + str(k), newp, futures=futures[k, :],
+                            #                    past=x[k],
+                            #                    gt=gt[k], dim=cfg['dim_clip'], weird=dspec[k],
+                            #                    text=str(best_future_errors_at_t), special=best_future_id)
+                            # drawer.draw_crops(imc[k], str(k), newp, dspec[k])
                             all_errors_at_t.append(best_future_errors_at_t)
                             all_ade_at_t.append(best_future_ade_at_t)
 
@@ -436,6 +440,7 @@ def train_multiple(cfg):
             if (e % 6 == 0):
                 print("SAVING " + newp)
                 saver.save(sess, newp + "/model/model_at_ep_"+str(e)+".ckpt")
+                saver.save(sess, newp + "/model/model_last.ckpt")
 
         return newp
 

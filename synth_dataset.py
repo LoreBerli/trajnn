@@ -222,5 +222,3 @@ class TrackDataset():
 
     def get(self):
         return self.gen()
-
-

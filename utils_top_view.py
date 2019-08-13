@@ -96,7 +96,7 @@ class Loader():
 
             test_thrds = []
             # self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-            for h in range(0, 2):
+            for h in range(0, 1):
                 tr = dataset.TrackDataset(h,self.test_q,self.cfg,tracks, num_istances=past_len, num_labels=future_len,
                                               train=False, dim_clip=dim_clip,rot=False,shf=True)
                 thread = mp.Process(target=tr.populate_queue, name="thr" + str(h))
@@ -232,7 +232,7 @@ class Loader_synth():
 
         thrds=[]
         #self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-        for h in range(0,3):
+        for h in range(0,2):
             tr=synth_dataset.TrackDataset(20, 40,queue=self.q,cfg=self.cfg, old=50, extra=50, scale=1, n_roads=3)
             thread=mp.Process(target=tr.populate_queue,name="thr"+str(h))
             thread.daemon = True
