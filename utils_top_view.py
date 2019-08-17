@@ -232,8 +232,8 @@ class Loader_synth():
 
         thrds=[]
         #self.data_train = synth_dataset.TrackDataset(20, 40, old=100, extra=100, scale=1, n_roads=3,self.q)
-        for h in range(0,2):
-            tr=synth_dataset.TrackDataset(20, 40,queue=self.q,cfg=self.cfg, old=50, extra=50, scale=1, n_roads=3)
+        for h in range(0,3):
+            tr=synth_dataset.TrackDataset(20, 40,queue=self.q,cfg=self.cfg, old=40, extra=40, scale=1, n_roads=3)
             thread=mp.Process(target=tr.populate_queue,name="thr"+str(h))
             thread.daemon = True
             print("Synth_loader_thread" + thread.name + "_init")

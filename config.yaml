@@ -9,26 +9,27 @@ batch: 16
 units : 64
 lat_size: 64
 disc_runs_per_gen_runs: 3
-epochs: 28
+epochs: 31
 lr: 0.0001
 dim_clip: 160
 clipping: False
 im_d_lr: 0.0001
-d_lr: 0.0001
+d_lr: 0.00005
 wei: 0.1
 old: False
-prefix: "33-5-only_synth"
+prefix: "no_acceleration_"
 inverted: "True"
 stn: False
 fine: True
 img_embed: 32
 norm: True
-big_window: 63
-small_window: 11
+big_window: 33
+small_window: 5
 ####################
 synth_data: True
-real_data: True
+real_data: False
 pretrain: 20
+combined: False
 ########################
 type: 5
 ####################
@@ -46,7 +47,7 @@ fut_img_inputs: False
 rec_losses: ['l2']
 ################
 vae: True
-refinement: 2
+refinement: 1
 ################
 GPU: 0
 ################
@@ -65,6 +66,4 @@ test: False
 load: False
 #file:///home/cioni/data/trajRNN/80035_inverted_All_true_l2__RNN-CTX-GAN-LINEAR-OLD-MULTIPLE20_40_32_32_delightful_fish
 #/home/cioni/data/trajRNN/2847_train_RNN-CTX10_20_breakable_gazelle
-load_path: "/home/cioni/PycharmProjects/trajnn/77039_33-5-only_synth_MULTIPLE20_40_128_128_hilarious_grouse/model/model_at_ep_24.ckpt"
-...
-
+load_path: "/home/cioni/PycharmProjects/trajnn/97364_combined_MULTIPLE20_40_64_64_tough_gerbil/model/model_at_ep_21.ckpt"

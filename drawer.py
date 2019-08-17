@@ -19,7 +19,7 @@ def back_transform(tredpoints):
         return np.array(twod_points),tredpoints[:,2]
 
 def draw_points(past,pts,gt, cfg,path_orig,box):
-    
+
     sx,sy=path_orig[3],path_orig[4]
 
 
@@ -56,7 +56,7 @@ def draw_points(past,pts,gt, cfg,path_orig,box):
     #poins,zs=back_transform(gt)
 
     poins = np.array(poins, dtype=np.int32)
-    
+
     lt = [tuple(p) for p in poins.tolist()]
     for i,l in enumerate(lt):
         r = min(255, 140 + i * 10)
@@ -92,7 +92,7 @@ def draw_points(past,pts,gt, cfg,path_orig,box):
     # poins=np.cumsum(poins,0)
     #poins=np.insert(poins,0,[0,0],0)
     #poins=np.array(poins,dtype=np.int32)
-    
+
     #poins,zs=back_transform(past)
 
     points=np.array(poins,dtype=np.int32)
@@ -102,7 +102,7 @@ def draw_points(past,pts,gt, cfg,path_orig,box):
             r = min(255, 90 + i * 10)
         else:
             r = min(255, 160 + i * 10)
-        sz=2#int(np.clip(zs[i]*100.0,0,10)) 
+        sz=2#int(np.clip(zs[i]*100.0,0,10))
         drawer.rectangle([(l[0]-sz,l[1]-sz),(l[0]+sz,l[1]+sz)],fill=(0,r,0))
 
     drawer.point(lt,fill=(0,128,0))
@@ -121,6 +121,61 @@ def points_alone(past,pts,gt,k,path):
     plt.scatter(gt[:, 0], gt[:, 1], c='b')
     plt.savefig(path+"/tst"+str(k)+".png")
     return
+
+def draw_simple_scenes(im, k, path, futures,past,gt,dim,weird,text=None,special=None):
+    im=np.tile(im,[1,1,3])
+    im=im*32
+
+    im=im.astype('uint8')
+
+    gf=Image.fromarray(im)
+
+    gf=gf.resize((dim*4,dim*4))
+
+
+
+
+    drawer = ImageDraw.Draw(gf)
+
+
+    sz = 1
+
+    poins = (np.array(past* 2, dtype=np.int32) )+ dim*2
+    lt = [tuple(p) for p in poins.tolist()]
+    for i, l in enumerate(lt):
+        r = min(255, 160 + i * 10)
+        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(r, 0, 0))
+
+    poins = (np.array(gt* 2, dtype=np.int32)) + dim*2
+    lt = [tuple(p) for p in poins.tolist()]
+    for i, l in enumerate(lt):
+        r = min(255, 160 + i * 10)
+        drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(0, 0, r))
+
+    # poins = (np.array(weird * 4, dtype=np.int32)) + dim * 2
+    # lt = [tuple(p) for p in poins.tolist()]
+    # for i, l in enumerate(lt):
+    #     r = min(255, 160 + i * 10)
+    #     drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] + sz, l[1] + sz)], fill=(0, r, r))
+
+    tr=0
+    step=int(223/len(futures))
+    for idx,future in enumerate(futures):
+
+        poins = (np.array(future* 2, dtype=np.int32)) + dim*2
+        lt = [tuple(p) for p in poins.tolist()]
+        for i, l in enumerate(lt):
+
+            r = min(255, 64 + tr * step)
+            if (idx==special):
+                drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(240, 255, 240))
+            else:
+                drawer.rectangle([(l[0] - sz, l[1] - sz), (l[0] , l[1] )], fill=(0  , r, 0  ))
+        tr+=1
+    if(text):
+        drawer.text((0,0),text,fill=(255,255,255))
+    gf.save(path+"/im_t"+str(k)+".png")
+
 
 def draw_scenes(sp_cord,sp_crop,im, k, path, futures,past,gt,dim,weird,text=None,special=None):
     im=np.tile(im,[1,1,3])
@@ -202,7 +257,3 @@ def draw_crops(imss,k,path,dps):
         draw.text((0,0),str(dps[p]),fill=(255))
 
         tota.save(path + "/crop_t" + str(k)+"_" +str(p)+ ".png")
-
-
-
-

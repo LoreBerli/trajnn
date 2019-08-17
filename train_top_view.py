@@ -186,15 +186,13 @@ def test_multiple(cfg):
 
     init = tf.initializers.global_variables()
     saver = tf.train.Saver()
-
-    if (cfg['type'] != 3):
-        newp = str(time.time()).split(".")[0][-5:] + "_" + cfg['prefix'] + "_" + "-".join(
-            nms[i] for i in range(cfg['type'] + 1)) + str(cfg['prev_leng']) + "_" + str(cfg['fut_leng']) + "_" + str(
-            cfg['units']) + "_" + str(cfg['lat_size']) + "_" + "_".join(name_generator.get_combo())
-    else:
-        newp = str(time.time()).split(".")[0][-5:] + "_" + cfg['prefix'] + "_" + nms[cfg['type']] + str(
-            cfg['prev_leng']) + "_" + str(cfg['fut_leng']) + "_" + str(cfg['units']) + "_" + str(
-            cfg['lat_size']) + "_" + "_".join(name_generator.get_combo())
+    err_per_im={}
+    # if (cfg['type'] != 3):
+    #     newp = str(time.time()).split(".")[0][-5:] + "_" + cfg['prefix'] + "_" + "-".join(
+    #         nms[i] for i in range(cfg['type'] + 1)) + str(cfg['prev_leng']) + "_" + str(cfg['fut_leng']) + "_" + str(
+    #         cfg['units']) + "_" + str(cfg['lat_size']) + "_" + "_".join(name_generator.get_combo())
+    # else:
+    newp = str(time.time()).split(".")[0][-5:] + "_test_"+cfg['load_path'].split("/")[-3]
 
     os.mkdir(newp)
     os.mkdir(newp + "/model")
@@ -237,7 +235,7 @@ def test_multiple(cfg):
             x = np.expand_dims(x, 0)
             gt = np.expand_dims(gt, 0)
 
-            imc, summary, ls, o, dspec = sess.run([mod.crops, merge, mod.loss, mod.out, mod.d_spec],
+            summary, ls, o, dspec = sess.run([ merge, mod.loss, mod.out, mod.d_spec],
                                                   feed_dict={inpts: utils.to_offsets(x),
                                                              outs: utils.to_offsets(gt),
                                                              mod.target: utils.to_offsets(gt),
@@ -261,8 +259,18 @@ def test_multiple(cfg):
                 best_future_ade_at_t = np.divide(np.cumsum(best_future_errors_at_t),
                                                  np.arange(1, cfg['fut_leng'] + 1))
 
+                err_per_im[str(index)]=[best_future_errors_at_t[-1]]
+                drawer.draw_simple_scenes(imga[k],
+                                   str(index), newp, futures=futures[k, :],
+                                   past=x[k],
+                                   gt=gt[k], dim=cfg['dim_clip'], weird=dspec[k],
+                                   text=str(best_future_errors_at_t), special=best_future_id)
                 all_errors_at_t.append(best_future_errors_at_t)
                 all_ade_at_t.append(best_future_ade_at_t)
+
+        with open(newp + "/data/errs", "w+") as fl2:
+            json.dump(err_per_im,fl2)
+        fl2.close()
 
         mean_errors_at_t = np.mean(all_errors_at_t, 0)
         mean_ade_at_t = np.mean(all_ade_at_t, 0)
@@ -352,8 +360,19 @@ def train_multiple(cfg):
                         x, gt, _, img,_ = loader.serve_multiprocess_train()
                 elif(i%2==0):
                     x, gt, _, img,_ = loader.serve_multiprocess_train()
+                    x2, gt2, _, img2,_ = loader_s.serve_multiprocess()
+                    x[0:cfg['batch']/2]=x2[0:cfg['batch']/2]
+                    gt[0:cfg['batch']/2]=gt2[0:cfg['batch']/2]
+                    img[0:cfg['batch']/2]=img2[0:cfg['batch']/2]
+
                 else:
                     x, gt, _, img,_ = loader_s.serve_multiprocess()
+                    x2, gt2, _, img2,_ = loader.serve_multiprocess_train()
+                    x[0:cfg['batch']/2]=x2[cfg['batch']/2:]
+                    gt[0:cfg['batch']/2]=gt2[cfg['batch']/2:]
+                    img[0:cfg['batch']/2]=img2[cfg['batch']/2:]
+
+
 
                 #
                 # if (e < 6 and i % 2 == 0):
@@ -437,7 +456,7 @@ def train_multiple(cfg):
                     print(str(np.mean(summ)) + " iteration " + str(i) + "of " + str(1000) + " ,at epoch " + str(
                         e) + " of " + str(cfg['epochs']))
 
-            if (e % 6 == 0):
+            if (e % 3 == 0):
                 print("SAVING " + newp)
                 saver.save(sess, newp + "/model/model_at_ep_"+str(e)+".ckpt")
                 saver.save(sess, newp + "/model/model_last.ckpt")
